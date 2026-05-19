@@ -1,33 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 interface Product {
   id: string;
-  name: string;
-  nameAr: string;
-  price: number; // SAR VAT-inclusive retail price
-  emoji: string;
+  sku: string;
+  item_name: string;
+  item_name_ar: string | null;
+  retail_price_sar: number;
+  category: string | null;
+  stock_quantity: number;
 }
 
 interface CartItem extends Product {
   quantity: number;
 }
-
-const BAKALA_PRODUCTS: Product[] = [
-  { id: "p1", name: "Almarai Long Life Milk 1L", nameAr: "حليب المراعي طويل الأجل", price: 6.5, emoji: "🥛" },
-  { id: "p2", name: "Nova Water 330ml", nameAr: "مياه نوفا", price: 1.0, emoji: "💧" },
-  { id: "p3", name: "Indomie Noodles Pack", nameAr: "إندومي نودلز", price: 1.5, emoji: "🍜" },
-  { id: "p4", name: "Lays Potato Chips", nameAr: "شيبس ليز", price: 3.0, emoji: "🥔" },
-  { id: "p5", name: "Pepsi Can 330ml", nameAr: "بيبسي", price: 2.5, emoji: "🥤" },
-  { id: "p6", name: "Samoli White Bread", nameAr: "خبز صامولي أبيض", price: 3.0, emoji: "🍞" },
-  { id: "p7", name: "Nadec Laban 360ml", nameAr: "لبن نادك", price: 2.0, emoji: "🥛" },
-  { id: "p8", name: "KDD Orange Juice 250ml", nameAr: "عصير برتقال كي دي دي", price: 1.5, emoji: "🧃" },
-  { id: "p9", name: "Almarai Cream Cheese", nameAr: "جبنة كريمي المراعي", price: 8.0, emoji: "🧀" },
-  { id: "p10", name: "Galaxy Chocolate Bar", nameAr: "شوكولاتة جالاكسي", price: 4.0, emoji: "🍫" },
-  { id: "p11", name: "Sunsilk Shampoo 200ml", nameAr: "شامبو صانسيلك", price: 12.0, emoji: "🧴" },
-  { id: "p12", name: "Fine Tissues Box", nameAr: "مناديل فاين", price: 5.5, emoji: "🧻" },
-];
 
 interface CheckoutResult {
   success: boolean;
@@ -49,10 +36,39 @@ interface CheckoutResult {
 }
 
 export default function POSPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState<CheckoutResult | null>(null);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const res = await fetch("/api/inventory?active=true");
+        const data = await res.json();
+        if (data.items) {
+          setProducts(
+            data.items.map((item: Record<string, unknown>) => ({
+              id: item.id,
+              sku: item.sku,
+              item_name: item.item_name,
+              item_name_ar: item.item_name_ar,
+              retail_price_sar: item.retail_price_sar,
+              category: item.category,
+              stock_quantity: item.stock_quantity,
+            }))
+          );
+        }
+      } catch {
+        console.error("Failed to load products");
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    }
+    loadProducts();
+  }, []);
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -88,11 +104,11 @@ export default function POSPage() {
 
   const totals = useMemo(() => {
     const grossHalalas = cart.reduce(
-      (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
+      (sum, item) => sum + Math.round(item.retail_price_sar * 100) * item.quantity,
       0
     );
     const netHalalas = cart.reduce((sum, item) => {
-      const netPerUnit = Math.round(Math.round(item.price * 100) / 1.15);
+      const netPerUnit = Math.round(Math.round(item.retail_price_sar * 100) / 1.15);
       return sum + netPerUnit * item.quantity;
     }, 0);
     const vatHalalas = grossHalalas - netHalalas;
@@ -117,8 +133,8 @@ export default function POSPage() {
         body: JSON.stringify({
           items: cart.map((item) => ({
             id: item.id,
-            name: item.name,
-            price: item.price,
+            name: item.item_name,
+            price: item.retail_price_sar,
             quantity: item.quantity,
           })),
           payment_method: paymentMethod,
@@ -138,6 +154,17 @@ export default function POSPage() {
     }
   }
 
+  const categoryEmoji: Record<string, string> = {
+    Dairy: "🥛",
+    Beverages: "🥤",
+    Snacks: "🍿",
+    "Bread & Bakery": "🍞",
+    Household: "🧻",
+    "Personal Care": "🧴",
+    "Canned & Dry": "🥫",
+    Frozen: "🧊",
+  };
+
   return (
     <div className="h-screen flex flex-col bg-zinc-100 dark:bg-zinc-950 overflow-hidden">
       {/* Header */}
@@ -150,35 +177,64 @@ export default function POSPage() {
             &ldquo;The Taste of Tradition&rdquo;
           </span>
         </div>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400" dir="rtl">
-          نقطة البيع — مخابز ايمان
-        </p>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+            {products.length} products loaded
+          </span>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400" dir="rtl">
+            نقطة البيع — مخابز ايمان
+          </p>
+        </div>
       </header>
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Product Grid */}
         <div className="flex-1 p-4 overflow-y-auto">
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-            {BAKALA_PRODUCTS.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-amber-400 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95 cursor-pointer"
-              >
-                <span className="text-3xl">{product.emoji}</span>
-                <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 text-center leading-tight line-clamp-2">
-                  {product.name}
-                </span>
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center" dir="rtl">
-                  {product.nameAr}
-                </span>
-                <span className="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono">
-                  {product.price.toFixed(2)} SAR
-                </span>
-              </button>
-            ))}
-          </div>
+          {isLoadingProducts ? (
+            <div className="flex items-center justify-center h-full text-zinc-400 dark:text-zinc-500">
+              Loading products from inventory...
+            </div>
+          ) : products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400 dark:text-zinc-500">
+              <p className="text-lg">No products in inventory</p>
+              <p className="text-sm">
+                Add products via{" "}
+                <a href="/inventory" className="text-amber-600 underline">
+                  Inventory Management
+                </a>
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {products.map((product) => (
+                <button
+                  key={product.id}
+                  onClick={() => addToCart(product)}
+                  disabled={product.stock_quantity <= 0}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-amber-400 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none disabled:hover:border-zinc-200"
+                >
+                  <span className="text-2xl">
+                    {categoryEmoji[product.category || ""] || "📦"}
+                  </span>
+                  <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 text-center leading-tight line-clamp-2">
+                    {product.item_name}
+                  </span>
+                  {product.item_name_ar && (
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center line-clamp-1" dir="rtl">
+                      {product.item_name_ar}
+                    </span>
+                  )}
+                  <span className="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono">
+                    {product.retail_price_sar.toFixed(2)}
+                  </span>
+                  <span className={`text-[10px] font-mono ${product.stock_quantity <= 5 ? "text-red-500" : "text-zinc-400"}`}>
+                    Stock: {product.stock_quantity}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right: Receipt / Cart */}
@@ -212,11 +268,11 @@ export default function POSPage() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                    {item.emoji} {item.name}
+                    {item.item_name}
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                    {item.price.toFixed(2)} × {item.quantity} ={" "}
-                    {(item.price * item.quantity).toFixed(2)}
+                    {item.retail_price_sar.toFixed(2)} × {item.quantity} ={" "}
+                    {(item.retail_price_sar * item.quantity).toFixed(2)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 ml-2">
