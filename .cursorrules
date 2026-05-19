@@ -1,0 +1,73 @@
+# Bakala ERP System – Cursor Rules
+# شركة مخابز ايمان جدة للخبز
+# "The Taste of Tradition" (SINCE 2007)
+
+## Core Architecture
+
+- **Stack**: Next.js 14+ (App Router), Tailwind CSS, Supabase (PostgreSQL + Auth + Realtime)
+- **Language**: TypeScript (strict mode enabled)
+- **State Management**: React Server Components by default; client state only when interactivity requires it
+- **API Layer**: Next.js Route Handlers (app/api/) for server-side logic
+
+## Financial Accuracy Rules (CRITICAL)
+
+1. **Mathematical Precision**: All monetary calculations MUST use integer arithmetic (fils/halalas) or Decimal libraries. NEVER use floating-point arithmetic for currency.
+2. **Double-Entry Ledger**: Every financial transaction MUST satisfy `SUM(Debits) = SUM(Credits)`. No transaction may be persisted without this invariant being validated at the logic layer.
+3. **VAT Isolation**: Before any database insertion, the system MUST decompose every line item into:
+   - `net_amount` (exclusive of tax)
+   - `vat_rate` (0.15 for standard 15% VAT, or 0.00 for exempt items)
+   - `vat_amount` = `net_amount * vat_rate`
+   - `gross_amount` = `net_amount + vat_amount`
+4. **Rounding**: VAT rounding follows ZATCA rules — round to the nearest halala (2 decimal places) per line item, not on totals.
+5. **Immutable Audit Trail**: Financial records are append-only. Corrections use reversal entries, never in-place mutations.
+
+## ZATCA Phase 2 E-Invoicing Compliance
+
+- All invoice generation logic MUST be structured to support ZATCA Phase 2 (Integration Phase) requirements.
+- Invoice data models MUST include fields for: UUID, Invoice Counter Value (ICV), Previous Invoice Hash (PIH), and Cryptographic Stamp.
+- XML generation layer must be prepared for UBL 2.1 format output.
+- QR code generation must encode TLV (Tag-Length-Value) structure per ZATCA specifications.
+- The system must support both Simplified Tax Invoices (B2C) and Standard Tax Invoices (B2B).
+
+## Database & Supabase Rules
+
+- Use Row Level Security (RLS) on all tables by default.
+- Prefer Supabase Edge Functions for sensitive operations (signing, hashing).
+- Store all amounts in the smallest currency unit (halalas) as BIGINT, converting to SAR only at the presentation layer.
+- Every table must include: `id` (UUID), `created_at`, `updated_at`, and `created_by` columns.
+
+## Code Generation Standards
+
+- Prioritize mathematical accuracy and strict Double-Entry Ledger logic over visual design.
+- Every financial function must include input validation and explicit error handling.
+- Use Zod for runtime schema validation on all financial data inputs.
+- Prefer server-side computation for all financial calculations.
+- Client components are only for UI interactivity — never for business logic.
+
+## Naming Conventions
+
+- Database: snake_case (e.g., `invoice_line_items`)
+- TypeScript: camelCase for variables/functions, PascalCase for types/components
+- Files: kebab-case for routes, PascalCase for components
+- API routes: RESTful naming under `app/api/`
+
+## Localization
+
+- Primary locale: ar-SA (Arabic, Saudi Arabia)
+- Secondary locale: en
+- Currency: SAR (Saudi Riyal), subdivided into 100 halalas
+- Date format: Hijri calendar support required alongside Gregorian
+- Number formatting: Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) as an option
+
+## Brand Guidelines
+
+- Brand: Eman Bakery (مخابز ايمان)
+- Slogan: "The Taste of Tradition" (SINCE 2007)
+- Use the slogan as placeholder/default text where applicable in UI scaffolding.
+
+## Security
+
+- Never expose service_role keys on the client.
+- Use NEXT_PUBLIC_ prefix ONLY for the Supabase URL and anon key.
+- All sensitive operations go through server-side Route Handlers or Edge Functions.
+- Implement CSRF protection on mutation endpoints.
