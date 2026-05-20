@@ -54,18 +54,45 @@ CREATE POLICY "Admins can update profiles"
 
 -- Function to auto-create a profile when a user signs up
 CREATE OR REPLACE FUNCTION fn_handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role user_role;
+  v_full_name TEXT;
+  v_role_text TEXT;
 BEGIN
-  INSERT INTO public.user_profiles (id, email, full_name, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'cashier')
+  v_full_name := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data->>'full_name'), ''),
+    NEW.email
   );
+
+  v_role_text := NULLIF(TRIM(NEW.raw_user_meta_data->>'role'), '');
+
+  IF v_role_text IS NOT NULL AND v_role_text IN ('admin', 'cashier') THEN
+    v_role := v_role_text::user_role;
+  ELSE
+    v_role := 'cashier'::user_role;
+  END IF;
+
+  INSERT INTO public.user_profiles (id, email, full_name, role)
+  VALUES (NEW.id, NEW.email, v_full_name, v_role);
+
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    BEGIN
+      INSERT INTO public.user_profiles (id, email, full_name, role)
+      VALUES (NEW.id, NEW.email, COALESCE(NEW.email, 'Unknown'), 'cashier'::user_role);
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL;
+    END;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger on auth.users insert
 CREATE TRIGGER on_auth_user_created
