@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { generateZatcaQRBase64, BAKALA_STORE } from "@/lib/zatca";
 
 interface CartItem {
   id: string;
@@ -166,10 +167,22 @@ export async function POST(request: NextRequest) {
       [journalEntryId]
     );
 
-    // 6. Link journal entry to transaction
+    // 6. Generate ZATCA TLV QR code
+    const transactionDate = new Date().toISOString();
+    const zatcaQrBase64 = generateZatcaQRBase64({
+      sellerName: BAKALA_STORE.sellerName,
+      vatNumber: BAKALA_STORE.vatNumber,
+      timestamp: transactionDate,
+      invoiceTotal: (totalGross / 100).toFixed(2),
+      vatTotal: (totalVat / 100).toFixed(2),
+    });
+
+    // 7. Link journal entry and save QR hash to transaction
     await client.query(
-      `UPDATE transactions SET journal_entry_id = $1 WHERE id = $2`,
-      [journalEntryId, transactionId]
+      `UPDATE transactions
+       SET journal_entry_id = $1, zatca_qr_hash = $2, transaction_date = $3
+       WHERE id = $4`,
+      [journalEntryId, zatcaQrBase64, transactionDate, transactionId]
     );
 
     await client.query("COMMIT");
@@ -180,6 +193,7 @@ export async function POST(request: NextRequest) {
         id: transactionId,
         number: transactionNumber,
         status: "completed",
+        date: transactionDate,
       },
       journal_entry: {
         id: journalEntryId,
@@ -187,6 +201,8 @@ export async function POST(request: NextRequest) {
         status: "posted",
       },
       receipt: {
+        transaction_number: transactionNumber,
+        date: transactionDate,
         items: lineItems.map((l) => ({
           name: l.name,
           quantity: l.quantity,
@@ -202,6 +218,7 @@ export async function POST(request: NextRequest) {
         change_sar: changeHalalas / 100,
         payment_method,
         vat_rate: "15%",
+        zatca_qr_base64: zatcaQrBase64,
       },
       double_entry: {
         debits: [

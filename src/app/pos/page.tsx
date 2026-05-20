@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Receipt, { ReceiptData } from "@/components/Receipt";
 
 interface Product {
   id: string;
@@ -18,15 +19,8 @@ interface CartItem extends Product {
 
 interface CheckoutResult {
   success: boolean;
-  transaction?: { number: number; status: string };
-  receipt?: {
-    subtotal_net_sar: number;
-    total_vat_sar: number;
-    total_gross_sar: number;
-    amount_paid_sar: number;
-    change_sar: number;
-    vat_rate: string;
-  };
+  transaction?: { number: number; status: string; date?: string };
+  receipt?: ReceiptData;
   double_entry?: {
     debits: { account: string; amount_sar: number }[];
     credits: { account: string; amount_sar: number }[];
@@ -42,6 +36,7 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState<CheckoutResult | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     async function loadProducts() {
@@ -146,6 +141,7 @@ export default function POSPage() {
 
       if (data.success) {
         setCart([]);
+        setShowReceipt(true);
       }
     } catch {
       setLastResult({ success: false, error: "Network error. Please try again." });
@@ -404,6 +400,14 @@ export default function POSPage() {
           )}
         </div>
       </div>
+
+      {/* ZATCA Receipt Overlay */}
+      {showReceipt && lastResult?.receipt && (
+        <Receipt
+          data={lastResult.receipt}
+          onClose={() => setShowReceipt(false)}
+        />
+      )}
     </div>
   );
 }

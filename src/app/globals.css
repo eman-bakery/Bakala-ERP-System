@@ -24,3 +24,45 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Print styles for 80mm thermal receipt printer */
+@media print {
+  /* Hide everything except the receipt */
+  body > * {
+    display: none !important;
+  }
+
+  /* Reset page for thermal printer */
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html, body {
+    width: 80mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-size: 11px !important;
+  }
+
+  /* Show only the receipt */
+  .receipt-paper {
+    display: block !important;
+    position: static !important;
+    width: 80mm !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure QR code prints clearly */
+  .receipt-paper img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
