@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 
 interface Metric {
   halalas: number;
@@ -104,35 +103,13 @@ export default function Dashboard() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-              Executive Dashboard
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              مخابز ايمان — &ldquo;The Taste of Tradition&rdquo; (SINCE 2007)
-            </p>
-          </div>
-          <nav className="flex gap-2 flex-wrap">
-            <Link
-              href="/pos"
-              className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
-            >
-              POS
-            </Link>
-            <Link
-              href="/inventory"
-              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
-            >
-              Inventory
-            </Link>
-            <Link
-              href="/expenses"
-              className="px-4 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-800 text-white text-sm font-medium transition-colors"
-            >
-              Expenses
-            </Link>
-          </nav>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+            Executive Dashboard
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            مخابز ايمان — &ldquo;The Taste of Tradition&rdquo; (SINCE 2007)
+          </p>
         </div>
 
         {/* Metric Cards */}
