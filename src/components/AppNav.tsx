@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/pos", label: "POS", icon: "🛒", adminOnly: false },
   { href: "/inventory", label: "Inventory", icon: "📦", adminOnly: true },
   { href: "/expenses", label: "Expenses", icon: "💸", adminOnly: false },
+  { href: "/shifts", label: "Shifts", icon: "⏱️", adminOnly: false },
   { href: "/staff", label: "Staff", icon: "👥", adminOnly: true },
 ];
 

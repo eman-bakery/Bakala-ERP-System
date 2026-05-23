@@ -3,7 +3,7 @@ import { createSupabaseMiddlewareClient } from "@/lib/supabase-middleware";
 
 const PUBLIC_ROUTES = ["/login", "/auth/callback"];
 const ADMIN_ONLY_ROUTES = ["/", "/inventory", "/staff"];
-const CASHIER_ALLOWED_ROUTES = ["/pos", "/expenses"];
+const CASHIER_ALLOWED_ROUTES = ["/pos", "/expenses", "/shifts"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
